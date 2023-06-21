@@ -22,6 +22,7 @@ let gisInited = false;
 
 document.getElementById("authorize_button").style.visibility = "hidden";
 document.getElementById("signout_button").style.visibility = "hidden";
+document.getElementById("data_table").style.visibility = "hidden";
 
 /**
  * Callback after api.js is loaded.
@@ -75,7 +76,7 @@ function handleAuthClick() {
     }
     document.getElementById("signout_button").style.visibility = "visible";
     document.getElementById("authorize_button").innerText = "Refresh";
-    await listLabels();
+    await listEmailIds();
   };
 
   if (gapi.client.getToken() === null) {
@@ -106,62 +107,70 @@ function handleSignoutClick() {
  * Print all Labels in the authorized user's inbox. If no labels
  * are found an appropriate message is printed.
  */
-async function listLabels() {
+async function listEmailIds() {
   let response;
   try {
     response = await gapi.client.gmail.users.messages.list({
       userId: "me",
       labelIds: "INBOX",
     });
+    response.result.messages.map((e) => {
+      getAllEmails(e.id);
+    });
   } catch (err) {
     document.getElementById("content").innerText = err.message;
-    return;
+    return [];
   }
-  response = await gapi.client.gmail.users.messages.get({
-    userId: "me",
-    id: response.result.messages[0].id,
-  });
-
-  const labels = response.result.labels;
-  if (!labels || labels.length == 0) {
-    document.getElementById("content").innerText = "No labels found.";
-    return;
-  }
-  // Flatten to string to display
-  const output = labels.reduce(
-    (str, label) => `${str}${label.name}\n`,
-    "Labels:\n"
-  );
-  document.getElementById("content").innerText = output;
 }
 
-function getGmailMessage(userId, messageId) {
-  const url = `https://gmail.googleapis.com/gmail/v1/users/${userId}/messages/${messageId}`;
+var i = 0;
 
-  // Tạo đối tượng XMLHttpRequest
-  const xhr = new XMLHttpRequest();
+async function getAllEmails(id) {
+  let response;
+  try {
+    response = await gapi.client.gmail.users.messages.get({
+      userId: "me",
+      id: id,
+    });
 
-  // Thiết lập hàm xử lý khi nhận được phản hồi từ máy chủ
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === XMLHttpRequest.DONE) {
-      if (xhr.status === 200) {
-        // Xử lý phản hồi thành công
-        const response = JSON.parse(xhr.responseText);
-        console.log(response);
-        // Thực hiện các thao tác khác với phản hồi
-      } else {
-        // Xử lý phản hồi không thành công
-        console.error("Lỗi khi gửi yêu cầu:", xhr.status);
+    let item = response.result.payload.headers;
+    // Truy cập vào phần tử tbody của bảng
+    const tbody = document.querySelector("#data-table tbody");
+
+    const row = document.createElement("tr");
+
+    // Tạo các ô dữ liệu
+    const orderCell = document.createElement("td");
+    orderCell.textContent = i;
+    i++;
+
+    const nameCell = document.createElement("td");
+    const senderCell = document.createElement("td");
+    const senderEmailCell = document.createElement("td");
+    const timeCell = document.createElement("td");
+
+    item.map((e) => {
+      console.log(e);
+      if (e.name == "Subject") nameCell.textContent = e.value;
+      if (e.name == "From") {
+        const parts = e.value.split("<");
+        senderCell.textContent = parts[0].trim();
+        senderEmailCell.textContent = parts[1].replace(">", "").trim();
       }
-    }
-  };
+      if (e.name == "Date") timeCell.textContent = e.value;
+    });
 
-  // Thiết lập phương thức và URL yêu cầu
-  xhr.open("GET", url, true);
+    // Thêm các ô vào hàng
+    row.appendChild(orderCell);
+    row.appendChild(nameCell);
+    row.appendChild(senderCell);
+    row.appendChild(senderEmailCell);
+    row.appendChild(timeCell);
 
-  // Thiết lập tiêu đề yêu cầu (nếu cần)
-  xhr.setRequestHeader("Authorization", "Bearer YOUR_ACCESS_TOKEN");
-
-  // Gửi yêu cầu
-  xhr.send();
+    // Thêm hàng vào tbody
+    tbody.appendChild(row);
+  } catch (err) {
+    document.getElementById("content").innerText = err.message;
+    return [];
+  }
 }
