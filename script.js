@@ -23,6 +23,7 @@ let gisInited = false;
 document.getElementById("authorize_button").style.visibility = "hidden";
 document.getElementById("signout_button").style.visibility = "hidden";
 document.getElementById("data_table").style.visibility = "hidden";
+document.getElementById("popup-form").style.display = "none";
 
 /**
  * Callback after api.js is loaded.
@@ -125,15 +126,28 @@ async function listEmailIds() {
 
 var i = 0;
 
+async function readEmail(id) {}
+
 async function getAllEmails(id) {
   let response;
   try {
     response = await gapi.client.gmail.users.messages.get({
       userId: "me",
       id: id,
+      format: "full",
     });
 
     let item = response.result.payload.headers;
+    console.log(response.result.payload.parts);
+
+    var part = response.result.payload.parts.filter(function (part) {
+      return part.mimeType == "text/html";
+    });
+    // var html = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    var html = atob(
+      response.result.payload.parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    );
+
     // Truy cập vào phần tử tbody của bảng
     const tbody = document.querySelector("#data-table tbody");
 
@@ -148,9 +162,9 @@ async function getAllEmails(id) {
     const senderCell = document.createElement("td");
     const senderEmailCell = document.createElement("td");
     const timeCell = document.createElement("td");
+    const detail = document.createElement("td");
 
     item.map((e) => {
-      console.log(e);
       if (e.name == "Subject") nameCell.textContent = e.value;
       if (e.name == "From") {
         const parts = e.value.split("<");
@@ -159,6 +173,19 @@ async function getAllEmails(id) {
       }
       if (e.name == "Date") timeCell.textContent = e.value;
     });
+    const button = document.createElement("button");
+    button.textContent = "Detail";
+    button.onclick = () => {
+      let popup = document.getElementById("popup-form");
+      let input = popup.getElementsByTagName("input");
+      let content = document.getElementById("content");
+      console.log(content);
+      input[0].value = nameCell.textContent;
+      input[1].value = senderCell.textContent;
+      content.innerHTML = html;
+      popup.style.display = "flex";
+    };
+    detail.appendChild(button);
 
     // Thêm các ô vào hàng
     row.appendChild(orderCell);
@@ -166,6 +193,7 @@ async function getAllEmails(id) {
     row.appendChild(senderCell);
     row.appendChild(senderEmailCell);
     row.appendChild(timeCell);
+    row.appendChild(detail);
 
     // Thêm hàng vào tbody
     tbody.appendChild(row);
