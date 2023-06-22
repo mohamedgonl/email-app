@@ -126,7 +126,38 @@ async function listEmailIds() {
 
 var i = 0;
 
-async function readEmail(id) {}
+async function readEmail(id) {
+  try {
+    response = await gapi.client.gmail.users.messages.get({
+      userId: "me",
+      id: id,
+      format: "full",
+    });
+
+    let item = response.result.payload.headers;
+
+    var part = response.result.payload.parts.filter(function (part) {
+      return part.mimeType == "text/html";
+    });
+
+    console.log(part);
+
+    var html = atob(
+      response.result.payload.parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    );
+
+    let popup = document.getElementById("popup-form");
+    let input = popup.getElementsByTagName("input");
+    let content = document.getElementById("content");
+    console.log(content);
+    input[0].value = nameCell.textContent;
+    input[1].value = senderCell.textContent;
+    content.innerHTML = html;
+    popup.style.display = "flex";
+  } catch (err) {
+    console.log(err);
+  }
+}
 
 async function getAllEmails(id) {
   let response;
@@ -138,15 +169,6 @@ async function getAllEmails(id) {
     });
 
     let item = response.result.payload.headers;
-    console.log(response.result.payload.parts);
-
-    var part = response.result.payload.parts.filter(function (part) {
-      return part.mimeType == "text/html";
-    });
-    // var html = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    var html = atob(
-      response.result.payload.parts[1].replace(/-/g, "+").replace(/_/g, "/")
-    );
 
     // Truy cập vào phần tử tbody của bảng
     const tbody = document.querySelector("#data-table tbody");
@@ -175,16 +197,7 @@ async function getAllEmails(id) {
     });
     const button = document.createElement("button");
     button.textContent = "Detail";
-    button.onclick = () => {
-      let popup = document.getElementById("popup-form");
-      let input = popup.getElementsByTagName("input");
-      let content = document.getElementById("content");
-      console.log(content);
-      input[0].value = nameCell.textContent;
-      input[1].value = senderCell.textContent;
-      content.innerHTML = html;
-      popup.style.display = "flex";
-    };
+    button.onclick = () => readEmail(id);
     detail.appendChild(button);
 
     // Thêm các ô vào hàng
