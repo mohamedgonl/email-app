@@ -131,21 +131,15 @@ async function readEmail(id) {
     response = await gapi.client.gmail.users.messages.get({
       userId: "me",
       id: id,
-      format: "full",
+      format: "raw",
     });
 
-    let item = response.result.payload.headers;
 
-    var part = response.result.payload.parts.filter(function (part) {
-      return part.mimeType == "text/html";
-    });
 
-    console.log(part);
+    console.log(response.result);
 
-    var html = atob(
-      response.result.payload.parts[1].replace(/-/g, "+").replace(/_/g, "/")
-    );
-
+    var html = atob(response.result.snippet.raw)
+    console.log(html);
     let popup = document.getElementById("popup-form");
     let input = popup.getElementsByTagName("input");
     let content = document.getElementById("content");
