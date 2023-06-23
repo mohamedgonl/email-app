@@ -104,6 +104,39 @@ function handleSignoutClick() {
   }
 }
 
+function sortTableByDate() {
+  var table, rows, switching, i, x, y, shouldSwitch;
+  table = document.getElementById("data-table");
+  switching = true;
+
+  while (switching) {
+    switching = false;
+    console.log(table);
+    rows = table.rows;
+    console.log(rows);
+    for (i = 1; i < (rows.length - 1); i++) {
+      shouldSwitch = false;
+      console.log(rows[i].getElementsByTagName("td")[4]);
+      x = rows[i].getElementsByTagName("td")[4].textContent;
+      y = rows[i + 1].getElementsByTagName("td")[4].textContent;
+
+      // Chuyển đổi chuỗi thành đối tượng Date để so sánh
+      var dateX = new Date(x);
+      var dateY = new Date(y);
+
+      if (dateX > dateY) {
+        shouldSwitch = true;
+        break;
+      }
+    }
+
+    if (shouldSwitch) {
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+    }
+  }
+}
+
 /**
  * Print all Labels in the authorized user's inbox. If no labels
  * are found an appropriate message is printed.
@@ -116,11 +149,16 @@ async function listEmailIds() {
       labelIds: "INBOX",
     });
     response.result.messages.map((e) => {
-      getAllEmails(e.id);
+      getEmail(e.id);
     });
+    
   } catch (err) {
     document.getElementById("content").innerText = err.message;
     return [];
+  }
+  finally {
+    console.log('Here');
+    sortTableByDate()
   }
 }
 
@@ -161,7 +199,7 @@ async function readEmail(id) {
   }
 }
 
-async function getAllEmails(id) {
+async function getEmail(id) {
   let response;
   try {
     response = await gapi.client.gmail.users.messages.get({
