@@ -126,6 +126,18 @@ async function listEmailIds() {
 
 var i = 0;
 
+function b64DecodeUnicode(str) {
+  // Going backwards: from bytestream, to percent-encoding, to original string.
+  return decodeURIComponent(
+    atob(str)
+      .split("")
+      .map(function (c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      })
+      .join("")
+  );
+}
+
 async function readEmail(id) {
   try {
     response = await gapi.client.gmail.users.messages.get({
@@ -133,19 +145,15 @@ async function readEmail(id) {
       id: id,
       format: "raw",
     });
+    let raw = response.result.raw;
 
-
-
-    console.log(response.result);
-
-    var html = atob(response.result.snippet.raw)
-    console.log(html);
+    var html = atob(raw.replace(/-/g, "+").replace(/_/g, "/"));
     let popup = document.getElementById("popup-form");
     let input = popup.getElementsByTagName("input");
     let content = document.getElementById("content");
     console.log(content);
-    input[0].value = nameCell.textContent;
-    input[1].value = senderCell.textContent;
+    // input[0].value = nameCell.textContent;
+    // input[1].value = senderCell.textContent;
     content.innerHTML = html;
     popup.style.display = "flex";
   } catch (err) {
