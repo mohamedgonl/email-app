@@ -14,16 +14,19 @@ const DISCOVERY_DOC =
 
 // Authorization scopes required by the API; multiple scopes can be
 // included, separated by spaces.
-const SCOPES = "https://www.googleapis.com/auth/gmail.readonly";
+const SCOPES =
+  "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send";
 
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
-
+console.log(document.getElementById("authorize_button"));
 document.getElementById("authorize_button").style.visibility = "hidden";
 document.getElementById("signout_button").style.visibility = "hidden";
-document.getElementById("data_table").style.visibility = "hidden";
+document.getElementById("data-table").style.visibility = "hidden";
+document.getElementById("send_mail_button").style.visibility = "hidden";
 document.getElementById("popup-form").style.display = "none";
+document.getElementById("popup-form-2").style.display = "none";
 
 /**
  * Callback after api.js is loaded.
@@ -76,6 +79,7 @@ function handleAuthClick() {
       throw resp;
     }
     document.getElementById("signout_button").style.visibility = "visible";
+    document.getElementById("send_mail_button").style.visibility = "visible";
     document.getElementById("authorize_button").innerText = "Refresh";
     await listEmailIds();
   };
@@ -104,76 +108,30 @@ function handleSignoutClick() {
   }
 }
 
-function sortTableByDate() {
-  var table, rows, switching, i, x, y, shouldSwitch;
-  table = document.getElementById("data-table");
-  switching = true;
+// Handle emails
 
-  while (switching) {
-    switching = false;
-    console.log(table);
-    rows = table.rows;
-    console.log(rows);
-    for (i = 1; i < (rows.length - 1); i++) {
-      shouldSwitch = false;
-      console.log(rows[i].getElementsByTagName("td")[4]);
-      x = rows[i].getElementsByTagName("td")[4].textContent;
-      y = rows[i + 1].getElementsByTagName("td")[4].textContent;
-
-      // Chuyển đổi chuỗi thành đối tượng Date để so sánh
-      var dateX = new Date(x);
-      var dateY = new Date(y);
-
-      if (dateX > dateY) {
-        shouldSwitch = true;
-        break;
-      }
-    }
-
-    if (shouldSwitch) {
-      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-      switching = true;
-    }
-  }
-}
-
-/**
- * Print all Labels in the authorized user's inbox. If no labels
- * are found an appropriate message is printed.
- */
 async function listEmailIds() {
   let response;
   try {
-    response = await gapi.client.gmail.users.messages.list({
+     response = await gapi.client.gmail.users.messages.list({
       userId: "me",
       labelIds: "INBOX",
     });
-    response.result.messages.map((e) => {
-      getEmail(e.id);
+
+    response.execute(function (response) {
+      $.each(response.messages, function () {
+        var messageRequest = gapi.client.gmail.users.messages.get({
+          userId: "me",
+          id: this.id,
+        });
+
+        messageRequest.execute(appendMessageRow);
+      });
     });
-    
   } catch (err) {
     document.getElementById("content").innerText = err.message;
     return [];
   }
-  finally {
-    console.log('Here');
-    sortTableByDate()
-  }
-}
-
-var i = 0;
-
-function b64DecodeUnicode(str) {
-  // Going backwards: from bytestream, to percent-encoding, to original string.
-  return decodeURIComponent(
-    atob(str)
-      .split("")
-      .map(function (c) {
-        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-      })
-      .join("")
-  );
 }
 
 async function readEmail(id) {
@@ -189,14 +147,112 @@ async function readEmail(id) {
     let popup = document.getElementById("popup-form");
     let input = popup.getElementsByTagName("input");
     let content = document.getElementById("content");
-    console.log(content);
-    // input[0].value = nameCell.textContent;
-    // input[1].value = senderCell.textContent;
     content.innerHTML = html;
     popup.style.display = "flex";
   } catch (err) {
     console.log(err);
   }
+}
+
+function getHeader(headers, index) {
+  var header = "";
+  $.each(headers, function () {
+    if (this.name.toLowerCase() === index.toLowerCase()) {
+      header = this.value;
+    }
+  });
+  return header;
+}
+
+function appendMessageRow(message) {
+  $(".table-inbox tbody").append(
+    "<tr>\
+            <td>" +
+      getHeader(message.payload.headers, "From") +
+      '</td>\
+            <td>\
+              <a href="#message-modal-' +
+      message.id +
+      '" data-toggle="modal" id="message-link-' +
+      message.id +
+      '">' +
+      getHeader(message.payload.headers, "Subject") +
+      "</a>\
+            </td>\
+            <td>" +
+      getHeader(message.payload.headers, "Date") +
+      "</td>\
+          </tr>"
+  );
+  var reply_to = (
+    getHeader(message.payload.headers, "Reply-to") !== ""
+      ? getHeader(message.payload.headers, "Reply-to")
+      : getHeader(message.payload.headers, "From")
+  ).replace(/\"/g, "&quot;");
+
+  var reply_subject =
+    "Re: " +
+    getHeader(message.payload.headers, "Subject").replace(/\"/g, "&quot;");
+  $("body").append(
+    '<div class="modal fade" id="message-modal-' +
+      message.id +
+      '" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">\
+            <div class="modal-dialog modal-lg">\
+              <div class="modal-content">\
+                <div class="modal-header">\
+                  <button type="button"\
+                          class="close"\
+                          data-dismiss="modal"\
+                          aria-label="Close">\
+                    <span aria-hidden="true">&times;</span></button>\
+                  <h4 class="modal-title" id="myModalLabel">' +
+      getHeader(message.payload.headers, "Subject") +
+      '</h4>\
+                </div>\
+                <div class="modal-body">\
+                  <iframe id="message-iframe-' +
+      message.id +
+      '" srcdoc="<p>Loading...</p>">\
+                  </iframe>\
+                </div>\
+                <div class="modal-footer">\
+                  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>\
+                  <button type="button" class="btn btn-primary reply-button" data-dismiss="modal" data-toggle="modal" data-target="#reply-modal"\
+                  onclick="fillInReply(\
+                    \'' +
+      reply_to +
+      "', \
+                    '" +
+      reply_subject +
+      "', \
+                    '" +
+      getHeader(message.payload.headers, "Message-ID") +
+      "'\
+                    );\"\
+                  >Reply</button>\
+                </div>\
+              </div>\
+            </div>\
+          </div>"
+  );
+  $("#message-link-" + message.id).on("click", function () {
+    var ifrm = $("#message-iframe-" + message.id)[0].contentWindow.document;
+    $("body", ifrm).html(getBody(message.payload));
+  });
+}
+
+function getBody(message) {
+  var encodedBody = "";
+  if (typeof message.parts === "undefined") {
+    encodedBody = message.body.data;
+  } else {
+    encodedBody = getHTMLPart(message.parts);
+  }
+  encodedBody = encodedBody
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .replace(/\s/g, "");
+  return decodeURIComponent(escape(window.atob(encodedBody)));
 }
 
 async function getEmail(id) {
@@ -254,4 +310,38 @@ async function getEmail(id) {
     document.getElementById("content").innerText = err.message;
     return [];
   }
+}
+
+function openSendEmail() {
+  let popup = document.getElementById("popup-form-2");
+  popup.style.display = "flex";
+}
+
+function sendEmail() {
+  const sender = "the.shy.garena2@gmail.com";
+  const receiver = document.getElementById("email_receiver");
+  const content = document.getElementById("content");
+  const subject = document.getElementById("tieu_de");
+
+  const message = `From: ${sender}\r\n" + 
+"To: ${receiver}\r\n" +
+"Subject: ${subject}\r\n\r\n" +
+ ${content} `;
+
+  // The body needs to be base64url encoded.
+  const encodedMessage = btoa(message);
+  const reallyEncodedMessage = encodedMessage
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+
+  gapi.client.gmail.users.messages
+    .send({
+      userId: "me",
+      resouce: {
+        raw: reallyEncodedMessage,
+      },
+    })
+    .then(function () {
+      console.log("done!");
+    });
 }
