@@ -197,15 +197,42 @@ function appendMessageRow(message) {
   });
 }
 
+var filesContent;
+
+function handleFileSelect(input) {
+  filesContent = [];
+  var files;
+  if (input == 1) {
+    files = $("#customFile-1")[0].files;
+  } else {
+    files = $("#customFile-2")[0].files;
+  }
+  // Loop through the files
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    var reader = new FileReader();
+
+    reader.onload = (function (file) {
+      return function (e) {
+        var content = e.target.result.split(",")[1];
+        filesContent.push(content);
+        console.log(content);
+      };
+    })(file);
+
+    reader.readAsDataURL(file);
+  }
+}
+
 function sendEmail() {
   $("#send-button").addClass("disabled");
-
   sendMessage(
     {
-      To: $("#compose-to").val(),
-      Subject: $("#compose-subject").val(),
+      to: $("#compose-to").val(),
+      subject: $("#compose-subject").val(),
+      body: $("#compose-message").val(),
+      files: $("#customFile-1")[0],
     },
-    $("#compose-message").val(),
     composeTidy()
   );
 
@@ -217,7 +244,6 @@ function composeTidy() {
   $("#compose-to").val("");
   $("#compose-subject").val("");
   $("#compose-message").val("");
-  $("#customFile").val();
   $("#send-button").removeClass("disabled");
 }
 
@@ -226,11 +252,13 @@ function sendReply() {
 
   sendMessage(
     {
-      To: $("#reply-to").val(),
-      Subject: $("#reply-subject").val(),
-      "In-Reply-To": $("#reply-message-id").val(),
+      to: $("#reply-to").val(),
+      subject: $("#reply-subject").val(),
+      reply: $("#reply-message-id").val(),
+      files: $("#customFile-2")[0],
+      body: $("#reply-message").val(),
     },
-    $("#reply-message").val(),
+
     replyTidy()
   );
 
@@ -240,9 +268,6 @@ function sendReply() {
 function replyTidy() {
   $("#reply-modal").modal("hide");
   $("#reply-message").val("");
-  console.log($("#customFile"));
-  $("#customFile").val();
-  console.log($("#customFile"));
   $("#reply-button").removeClass("disabled");
 }
 
@@ -252,22 +277,15 @@ function fillInReply(to, subject, message_id) {
   $("#reply-message-id").val(message_id);
 }
 
-function sendMessage(headers_obj, message, callback) {
-  // var email = "";
+function sendMessage(message, callback) {
+  var email = createMimeMessage_(message);
 
-  // for (var header in headers_obj)
-  //   email += header += ": " + headers_obj[header] + "\r\n";
-
-  // email += "\r\n" + message;
-
-  var email = createMimeMessage_(message)
-  
   console.log(email);
   var sendRequest = gapi.client.gmail.users.messages.send({
     userId: "me",
     resource: {
-      // raw: window.btoa(email).replace(/\+/g, "-").replace(/\//g, "_"),
-      raw: btoa(unescape(encodeURIComponent(email))),
+      raw: window.btoa(email).replace(/\+/g, "-").replace(/\//g, "_"),
+      // raw: btoa(unescape(encodeURIComponent(email))),
     },
   });
 
@@ -311,112 +329,47 @@ function getHTMLPart(arr) {
   return "";
 }
 
-
-
-
-
-
-
 /////////////////////////////////////////////////////
-function sendEmailWithAttachments() {
-  var attachments = ['File_ID_1', 'File_ID_2'];
-
-  var message = {
-    to: {
-      name: 'Google Scripts',
-      email: 'amit@labnol.org',
-    },
-    from: {
-      name: 'Amit Agarwal',
-      email: 'amit@labnol.org',
-    },
-    body: {
-      text: "Mr hänn is schon lang nümme g'she.",
-      html: "Mr hänn is schon <b>lang nümme</b> g'she.",
-    },
-    subject: 'ctrlq, tech à la carte',
-    files: getAttachments_(attachments),
-  };
-
-  // Compose Gmail message and send immediately
-  callGmailAPI_(message);
-}
-
-function callGmailAPI_(message) {
-  var payload = createMimeMessage_(message);
-
-  var response = UrlFetchApp.fetch(
-    'https://www.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=media',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + ScriptApp.getOAuthToken(),
-        'Content-Type': 'message/rfc822',
-      },
-      muteHttpExceptions: true,
-      payload: payload,
-    }
-  );
-
-}
-
-// UTF-8 characters in names and subject
-function encode_(subject) {
-  var enc_subject = Utilities.base64Encode(subject, Utilities.Charset.UTF_8);
-  return '=?utf-8?B?' + enc_subject + '?=';
-}
-
-// Insert file attachments from Google Drive
-function getAttachments_(ids) {
-  var att = [];
-  for (var i in ids) {
-    var file = DriveApp.getFileById(ids[i]);
-    att.push({
-      mimeType: file.getMimeType(),
-      fileName: file.getName(),
-      bytes: Utilities.base64Encode(file.getBlob().getBytes()),
-    });
-  }
-  return att;
-}
 
 // Create a MIME message that complies with RFC 2822
 function createMimeMessage_(msg) {
-  var nl = '\n';
-  var boundary = '__ctrlq_dot_org__';
+  var nl = "\n";
+  var boundary = "__ctrlq_dot_org__";
 
   var mimeBody = [
-    'MIME-Version: 1.0',
-    'To: ' + encode_(msg.to) ,
-    'From: ' + encode_(msg.from),
-    'Subject: ' + encode_(msg.subject), // takes care of accented characters
+    "MIME-Version: 1.0",
+    "To: " + msg.to,
+    "From: " + msg.from,
+    "In-Reply-To:" + msg.reply,
+    "Subject: " + msg.subject, // takes care of accented characters
 
-    'Content-Type: multipart/alternative; boundary=' + boundary + nl,
-    '--' + boundary,
+    "Content-Type: multipart/alternative; boundary=" + boundary + nl,
+    "--" + boundary,
 
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: base64' + nl,
-    Utilities.base64Encode(msg.body.text, Utilities.Charset.UTF_8) + nl,
-    '--' + boundary,
+    // "Content-Type: text/plain; charset=UTF-8",
+    // // "Content-Transfer-Encoding: 7bit" + nl,
+    // (msg.body) + nl,
+    // "--" + boundary,
 
-    'Content-Type: text/html; charset=UTF-8',
-    'Content-Transfer-Encoding: base64' + nl,
-    Utilities.base64Encode(msg.body.html, Utilities.Charset.UTF_8) + nl,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: 7bit" + nl,
+    msg.body + nl,
   ];
 
-  for (var i = 0; i < msg.files.length; i++) {
+  for (var i = 0; i < msg.files.files.length; i++) {
+    var file = msg.files.files[i];
     var attachment = [
-      '--' + boundary,
-      'Content-Type: ' + msg.files[i].mimeType + '; name="' + msg.files[i].fileName + '"',
-      'Content-Disposition: attachment; filename="' + msg.files[i].fileName + '"',
-      'Content-Transfer-Encoding: base64' + nl,
-      msg.files[i].bytes,
+      "--" + boundary,
+      "Content-Type: " + file.type + '; name="' + file.name + '"',
+      'Content-Disposition: attachment; filename="' + file.name + '"',
+      "Content-Transfer-Encoding: base64" + nl,
+      filesContent[i],
     ];
 
     mimeBody.push(attachment.join(nl));
   }
 
-  mimeBody.push('--' + boundary + '--');
+  mimeBody.push("--" + boundary + "--");
 
   return mimeBody.join(nl);
 }
