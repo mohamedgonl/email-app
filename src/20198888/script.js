@@ -106,7 +106,8 @@ function displayInbox() {
   var request = gapi.client.gmail.users.messages.list({
     userId: "me",
     labelIds: "INBOX",
-    maxResults: 15,
+    maxResults: 100,
+    minResults: 80
   });
   request.execute(function (response) {
     $.each(response.messages, function () {
@@ -117,6 +118,7 @@ function displayInbox() {
       messageRequest.execute(appendMessageRow);
     });
   });
+
 }
 
 function appendMessageRow(message) {
