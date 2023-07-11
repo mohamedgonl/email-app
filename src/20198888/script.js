@@ -118,6 +118,7 @@ function displayInbox() {
       messageRequest.execute(appendMessageRow);
     });
   });
+
 }
 
 function appendMessageRow(message) {
