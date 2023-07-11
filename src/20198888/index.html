@@ -29,9 +29,18 @@
         height: 600px;
         display: flex;
       }
+      #alertContainer {
+        position: fixed;
+        bottom: 0px;
+        width:  100%;
+        z-index: 9999;
+        font-size: large;
+        text-align: right;
+      }
     </style>
   </head>
   <body>
+    <div id="alertContainer"></div>
     <div class="container">
       <div class="text-center">
         <h1>Email App Using GmailAPI</h1>
@@ -56,7 +65,7 @@
         Authorize
       </button>
 
-      <table class="table table-striped table-inbox hidden">
+      <table class="table table-striped table-inbox hidden"id="table-data">
         <thead>
           <tr>
             <th>From</th>

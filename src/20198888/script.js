@@ -106,7 +106,8 @@ function displayInbox() {
   var request = gapi.client.gmail.users.messages.list({
     userId: "me",
     labelIds: "INBOX",
-    maxResults: 15,
+    maxResults: 100,
+    minResults: 80,
   });
   request.execute(function (response) {
     $.each(response.messages, function () {
@@ -278,18 +279,29 @@ function fillInReply(to, subject, message_id) {
 }
 
 function sendMessage(message, callback) {
-  var email = createMimeMessage_(message);
-
-  console.log(email);
-  var sendRequest = gapi.client.gmail.users.messages.send({
-    userId: "me",
-    resource: {
-      raw: window.btoa(email).replace(/\+/g, "-").replace(/\//g, "_"),
-      // raw: btoa(unescape(encodeURIComponent(email))),
-    },
-  });
-
-  return sendRequest.execute(callback);
+  try {
+    var email = createMimeMessage_(message);
+    var sendRequest = gapi.client.gmail.users.messages.send({
+      userId: "me",
+      resource: {
+        raw: window
+          .btoa(unescape(encodeURIComponent(email)))
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_"),
+        // raw: btoa(unescape(encodeURIComponent(email))),
+      },
+    });
+    // Sử dụng hàm showAlert để tạo thông báo
+    $(document).ready(function () {
+      showAlert("Send email success!", "success", 2000);
+    });
+    return sendRequest.execute(callback);
+  } catch (error) {
+    // Sử dụng hàm showAlert để tạo thông báo
+    $(document).ready(function () {
+      showAlert(error, "error", 2000);
+    });
+  }
 }
 
 function getHeader(headers, index) {
@@ -372,4 +384,19 @@ function createMimeMessage_(msg) {
   mimeBody.push("--" + boundary + "--");
 
   return mimeBody.join(nl);
+}
+
+function showAlert(message, type, duration) {
+  // Tạo cảnh báo
+  var alertMessage = $(
+    '<div class="alert alert-' + type + '" role="alert">' + message + "</div>"
+  );
+
+  // Hiển thị cảnh báo trong #alertContainer
+  $("#alertContainer").append(alertMessage);
+
+  // Xóa cảnh báo sau khoảng thời gian duration (mili giây)
+  setTimeout(function () {
+    alertMessage.alert("close");
+  }, duration);
 }
