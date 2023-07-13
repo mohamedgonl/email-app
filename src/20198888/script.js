@@ -293,15 +293,26 @@ function sendMessage(message, callback) {
       },
     });
     // Sử dụng hàm showAlert để tạo thông báo
-    $(document).ready(function () {
-      showAlert("Send email success!", "success", 2000);
-    });
+    // $(document).ready(function () {
+    //   showAlert("Send email success!", "success", 2000);
+    // });
+    Swal.fire(
+      'Success',
+      'Send email success',
+      'success'
+    )
     return sendRequest.execute(callback);
   } catch (error) {
-    // Sử dụng hàm showAlert để tạo thông báo
-    $(document).ready(function () {
-      showAlert(error, "error", 2000);
-    });
+    // // Sử dụng hàm showAlert để tạo thông báo
+    // $(document).ready(function () {
+    //   showAlert(error, "error", 2000);
+    // });
+    Swal.fire({
+      icon: 'error',
+      title: 'Oops...',
+      text: 'Something went wrong!',
+    })
+    console.log(error);
   }
 }
 
@@ -387,17 +398,17 @@ function createMimeMessage_(msg) {
   return mimeBody.join(nl);
 }
 
-function showAlert(message, type, duration) {
-  // Tạo cảnh báo
-  var alertMessage = $(
-    '<div class="alert alert-' + type + '" role="alert">' + message + "</div>"
-  );
+// function showAlert(message, type, duration) {
+//   // Tạo cảnh báo
+//   var alertMessage = $(
+//     '<div class="alert alert-' + type + '" role="alert">' + message + "</div>"
+//   );
 
-  // Hiển thị cảnh báo trong #alertContainer
-  $("#alertContainer").append(alertMessage);
+//   // Hiển thị cảnh báo trong #alertContainer
+//   $("#alertContainer").append(alertMessage);
 
-  // Xóa cảnh báo sau khoảng thời gian duration (mili giây)
-  setTimeout(function () {
-    alertMessage.alert("close");
-  }, duration);
-}
+//   // Xóa cảnh báo sau khoảng thời gian duration (mili giây)
+//   setTimeout(function () {
+//     alertMessage.alert("close");
+//   }, duration);
+// }
