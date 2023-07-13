@@ -122,7 +122,6 @@ function displayInbox() {
 }
 
 function appendMessageRow(message) {
-  console.log(message.payload.headers);
   $(".table-inbox tbody").append(
     "<tr>\
         <td>" +
@@ -218,7 +217,6 @@ function handleFileSelect(input) {
       return function (e) {
         var content = e.target.result.split(",")[1];
         filesContent.push(content);
-        console.log(content);
       };
     })(file);
 
@@ -282,6 +280,7 @@ function fillInReply(to, subject, message_id) {
 function sendMessage(message, callback) {
   try {
     var email = createMimeMessage_(message);
+    console.log(email);
     var sendRequest = gapi.client.gmail.users.messages.send({
       userId: "me",
       resource: {
@@ -367,7 +366,7 @@ function createMimeMessage_(msg) {
     "In-Reply-To:" + msg.reply,
     "Subject: " + msg.subject, // takes care of accented characters
 
-    "Content-Type: multipart/alternative; boundary=" + boundary + nl,
+    "Content-Type: Multipart/Mixed; boundary=" + boundary + nl,
     "--" + boundary,
 
     // "Content-Type: text/plain; charset=UTF-8",
